@@ -1,8 +1,8 @@
 #!/bin/bash
 
-### You can change some default settings down here if you want to
-
-# Default directories (!!! It is important that WAVE and FLAC directories are separate. Otherwise rip-ninja might not function properly !!!)
+## This is the rip-ninja module, a convinient wrapper for cdparanoia.
+## You can use this script to rip audio from a cd and instantly convert it into any format that ffmpeg can turn a wave file into.
+## Note that audio tagging does not work for every output format
 
 MUSIC_DIR=~/Music
 WAVE_DIR=$MUSIC_DIR/wav
@@ -11,7 +11,7 @@ FLAC_DIR=$MUSIC_DIR/flac
 ### ------------------------------------------------------------
 
 print_help () {
-	echo 'USAGE: rip-ninja "name-of-the-album"'
+	echo -e "USAGE: rip-ninja [OPTIONS]\nStill have to figure out how to do a good help page, please come back later."
 }
 
 overwrite_prompt () {
@@ -25,30 +25,36 @@ overwrite_prompt () {
 	fi
 }
 
-if [ "$1" == "-h" ] || [ "$1" == "--help" ] 
-then
-	print_help
-	exit 0
-fi
+## Start of the script - parsing command line arguments
+## Poudly stolen from stackoverflow
 
-if [ -z "$1" ]
-then
-	echo "Please give the name of the album."
-	print_help
-	exit 1
-fi
+UNKNOWN_OPTION=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
 
-if [ -n "$2" ]
-then
-	echo "Too many arguments."
-	print_help
-	exit 1
-fi
+  case $key in
+    -o|--output-directory)
+      OUTPUT_DIR="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -f|--format)
+      FORMAT="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    *)    # unknown option
+      UNKNOWN_OPTION+=("$1") # save it in an array for later
+      shift # past argument
+      ;;
+  esac
+done
 
-# Creating tracks directories if they don't exist
-[ -d $MUSIC_DIR ] || mkdir $MUSIC_DIR
-[ -d $WAVE_DIR ]  || mkdir $WAVE_DIR
-[ -d $FLAC_DIR ]  || mkdir $FLAC_DIR
+set -- "${UNKNOWN_OPTION[@]}" # restore position of unknown args array
+
+
+# Creating output directory if it doesn't exist
+[ -d $OUTPUT_DIR] || mkdir $OUTPUT_DIR
 
 mkdir $WAVE_DIR/$1 || overwrite_prompt $1
 mkdir $FLAC_DIR/$1
