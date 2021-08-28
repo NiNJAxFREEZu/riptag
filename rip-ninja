@@ -52,19 +52,16 @@ done
 
 set -- "${UNKNOWN_OPTION[@]}" # restore position of unknown args array
 
-
-# Creating output directory if it doesn't exist
-[ -d $OUTPUT_DIR] || mkdir $OUTPUT_DIR
-
-mkdir $WAVE_DIR/$1 || overwrite_prompt $1
-mkdir $FLAC_DIR/$1
-
 # Ripping cd into wave files
-cd $WAVE_DIR/$1
-cdparanoia -B
+cd $OUTPUT_DIR || exit
+cdparanoia --search-for-drive --batch
 
-# Converting ripped wave files into flacs
-for track in *;
-do
-	ffmpeg -i $track $FLAC_DIR/$1/$track.flac
-done
+# Converting ripped wave files into flacs if user passed --output-format argument
+if [ ! -z $FORMAT ]
+then
+    for track in *;
+    do
+	    ffmpeg -i $track $OUTPUT_DIR/$track.$FORMAT || exit
+        rm $track
+    done
+fi
