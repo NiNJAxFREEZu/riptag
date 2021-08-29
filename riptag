@@ -28,6 +28,7 @@ overwrite_prompt () {
 ## Start of the script - parsing command line arguments
 ## Poudly stolen from stackoverflow
 
+NOTAG="FALSE"
 UNKNOWN_OPTION=()
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -43,6 +44,11 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    -nt|--no-tag)
+      NOTAG="TRUE"
+      shift # past argument
+      shift # past value
+      ;;
     *)    # unknown option
       UNKNOWN_OPTION+=("$1") # save it in an array for later
       shift # past argument
@@ -52,22 +58,35 @@ done
 
 set -- "${UNKNOWN_OPTION[@]}" # restore position of unknown args array
 
-# Checking if user provided a format supported by ffmpeg
+## Checking if user provided a format supported by ffmpeg
 if [ ! -z $FORMAT ]
 then
     ffmpeg -formats -hide_banner | tail -n +5 | awk '{ print $2 }' | grep $FORMAT --quiet || echoerr "Provided format is not supported. Isuue 'ffmpeg -formats' to list all the available formats."
 fi
 
-# Ripping cd into wave files
+## Ripping cd into wave files
 cd $OUTPUT_DIR || exit 1
 cdparanoia --search-for-drive --batch
 
-# Converting ripped wave files into flacs if user passed --output-format argument
-if [ ! -z $FORMAT ]
-then
-    for track in *;
-    do
-	    ffmpeg -i $track $OUTPUT_DIR/$track.$FORMAT || exit 1
+## Converting and tagging ripped wave files 
+for track in *;
+do
+    # Recognizing audio track
+    if [ $NOTAG = "FALSE" ]
+    then
+        echo -e "Recognizing and tagging $track...\t"
+
+        tracklength=$(printf %.0f $(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $track))
+
+        fpcalc $track -length $tracklength > $track.fingerprint
+
+        echo "Done."
+    fi
+
+    # Converting audio track
+    if [ ! -z $FORMAT ]
+    then
+	    ffmpeg -hide_banner -i $track $OUTPUT_DIR/$track.$FORMAT || exit 1
         rm $track
-    done
-fi
+    fi
+done
